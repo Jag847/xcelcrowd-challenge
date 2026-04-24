@@ -447,6 +447,10 @@ MAX_DECAYS=3
 ```
 
 Bootstrap the database:
+
+> [!TIP]
+> If prompted for a password by `psql`, use the one defined in your `.env` (default in seeds/compose is `password`).
+
 ```bash
 # Using psql (Ensure the 'nextinline' database exists)
 psql -U postgres -c "CREATE DATABASE nextinline;"
