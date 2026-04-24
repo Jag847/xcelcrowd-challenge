@@ -57,6 +57,11 @@ class QueueService {
         }
     }
 
+    /**
+     * Entry point for the concurrency-safe application flow.
+     * Uses pessimistic row-locking on the target Job record to serialize 
+     * capacity evaluation across high-frequency concurrent requests.
+     */
     async applyToJob(email, jobId) {
         const client = await db.connect();
         try {
@@ -71,6 +76,7 @@ class QueueService {
                 return { id: existingApp.rows[0].id, status: existingApp.rows[0].status, alreadyApplied: true };
             }
 
+            // Lock the Job row at the database IO level to prevent 'Last Spot' race conditions.
             const jobRes = await client.query('SELECT capacity FROM Jobs WHERE id = $1 FOR UPDATE', [jobId]);
             if (jobRes.rows.length === 0) throw new Error('Job not found');
             const capacity = jobRes.rows[0].capacity;
@@ -113,6 +119,11 @@ class QueueService {
     }
 
     // Pass the client from the exitApplicant/decayManager so it guarantees the transaction is closed atomically
+    /**
+     * Deterministic queue promotion logic. 
+     * If providedClient is passed, the operation executes within the caller's transaction context,
+     * ensuring that slot release and queue advancement happen as a single atomic unit.
+     */
     async promoteNext(jobId, providedClient = null) {
         let client = providedClient || await db.connect();
         try {
@@ -137,6 +148,8 @@ class QueueService {
                 return null;
             }
 
+            // Promote based on deterministic sequence ordering.
+            // SKIP LOCKED allows horizontally scaled workers to fetch discrete chunks of candidates.
             const waitlistedApplicant = await client.query(
                 'SELECT id FROM Applicants WHERE job_id = $1 AND status = \'WAITLISTED\' ORDER BY priority_score ASC LIMIT 1 FOR UPDATE SKIP LOCKED',
                 [jobId]

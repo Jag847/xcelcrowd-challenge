@@ -34,7 +34,9 @@ class DecayManager {
             try {
                 await client.query('BEGIN');
 
-                // 1. Identify expired applicants (SKIP LOCKED prevents collisions across instances)
+                // 1. Identify expired applicants. 
+                // We use FOR UPDATE SKIP LOCKED to permit parallel worker instances to process 
+                // discrete batches without cross-instance locking contention.
                 const expired = await client.query(
                      `SELECT id, job_id, decay_count FROM Applicants 
                       WHERE status = 'PENDING_ACK' 
@@ -62,7 +64,8 @@ class DecayManager {
                         );
                         logger.info({ applicantId: id, jobId: job_id }, 'Applicant reached max decays. Purged to EXITED.');
                     } else {
-                        // Penalize using atomic sequence (nextval) sending to back of line
+                        // Penalize by assigning a new sequence value, effectively pushing the applicant
+                        // to the physical end of the waitlist (deterministic repositioning).
                         await client.query(
                             'UPDATE Applicants SET status = \'WAITLISTED\', priority_score = nextval(\'priority_score_seq\'), decay_count = $2, last_transition_at = NOW(), updated_at = NOW() WHERE id = $1',
                             [id, decay_count + 1]
@@ -90,7 +93,9 @@ class DecayManager {
             }
         }
 
-        // Recursive timeout mechanism (prevents overload if DB transaction lags)
+        // Strategic recursive timeout mechanism. 
+        // This mitigates DB contention and prevents stack overflow/execution overlap 
+        // if a transaction batch takes longer than the intended interval.
         if (this.isRunning) {
             this.timeoutId = setTimeout(() => this.processDecays(), this.interval);
         }
