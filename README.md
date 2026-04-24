@@ -447,8 +447,11 @@ MAX_DECAYS=3
 ```
 
 Bootstrap the database:
-
 ```bash
+# Using psql (Ensure the 'nextinline' database exists)
+psql -U postgres -c "CREATE DATABASE nextinline;"
+
+# Apply schema and initial seeds
 psql -U postgres -d nextinline -f models/schema.sql
 psql -U postgres -d nextinline -f models/seed.sql
 ```
