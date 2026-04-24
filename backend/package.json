@@ -1,0 +1,26 @@
+{
+  "name": "next-in-line-backend",
+  "version": "1.0.0",
+  "description": "Backend for Next In Line",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node ./node_modules/jest/bin/jest.js --runInBand --detectOpenHandles --forceExit"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.3",
+    "pino": "^8.16.2",
+    "pino-http": "^8.5.1",
+    "pino-pretty": "^10.2.3",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
+  }
+}
