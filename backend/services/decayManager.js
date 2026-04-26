@@ -50,6 +50,7 @@ class DecayManager {
                     break;
                 }
 
+                const jobIdsToPromote = new Set();
                 for (const row of expired.rows) {
                     const { id, job_id, decay_count } = row;
 
@@ -79,8 +80,12 @@ class DecayManager {
                         );
                     }
                     
-                    // Cascade passing the shared transaction client
-                    await queueService.promoteNext(job_id, client);
+                    jobIdsToPromote.add(job_id);
+                }
+
+                // Call promoteNext once per job to fill the opened slots efficiently
+                for (const jobId of jobIdsToPromote) {
+                    await queueService.promoteNext(jobId, client);
                 }
 
                 await client.query('COMMIT');
