@@ -7,17 +7,7 @@ const { statusSchema, acknowledgeSchema } = require('../schemas');
 const queueService = require('../services/queueService');
 const authenticate = require('../middleware/auth');
 
-const ensureApplicantCanAccess = (applicant, user) => {
-    if (user.role === 'COMPANY_ADMIN') {
-        return;
-    }
 
-    if (!user.email || applicant.email !== user.email) {
-        const error = new Error('Forbidden: You can only access your own application');
-        error.statusCode = 403;
-        throw error;
-    }
-};
 
 // Strict read limiter to completely ban external scraping routines testing position arrays
 const statusLimiter = rateLimit({
@@ -61,7 +51,7 @@ router.get('/:id/status', statusLimiter, authenticate(['APPLICANT', 'COMPANY_ADM
         if (appRes.rows.length === 0) return res.status(404).json({ error: 'Not found' });
 
         const applicant = appRes.rows[0];
-        ensureApplicantCanAccess(applicant, req.user);
+        queueService.assertApplicantAccess(applicant, req.user);
         let position = null;
 
         if (applicant.status === 'WAITLISTED') {

@@ -1,10 +1,6 @@
 const db = require('../config/db');
+const { NotFoundError, ConflictError, UnauthorizedError, ForbiddenError } = require('../utils/errors');
 
-const createHttpError = (message, statusCode) => {
-    const error = new Error(message);
-    error.statusCode = statusCode;
-    return error;
-};
 
 class QueueService {
     async logStateChange(client, applicantId, from, to, trigger) {
@@ -37,7 +33,7 @@ class QueueService {
         );
 
         if (result.rows.length === 0) {
-            throw createHttpError('Applicant not found', 404);
+            throw new NotFoundError('Applicant not found');
         }
 
         return result.rows[0];
@@ -45,7 +41,7 @@ class QueueService {
 
     assertApplicantAccess(applicant, actor) {
         if (!actor || !actor.role) {
-            throw createHttpError('Unauthorized', 401);
+            throw new UnauthorizedError();
         }
 
         if (actor.role === 'COMPANY_ADMIN') {
@@ -53,7 +49,7 @@ class QueueService {
         }
 
         if (!actor.email || applicant.email !== actor.email) {
-            throw createHttpError('Forbidden: You can only access your own application', 403);
+            throw new ForbiddenError('You can only access your own application');
         }
     }
 
@@ -78,7 +74,7 @@ class QueueService {
 
             // Lock the Job row at the database IO level to prevent 'Last Spot' race conditions.
             const jobRes = await client.query('SELECT capacity FROM Jobs WHERE id = $1 FOR UPDATE', [jobId]);
-            if (jobRes.rows.length === 0) throw new Error('Job not found');
+            if (jobRes.rows.length === 0) throw new NotFoundError('Job not found');
             const capacity = jobRes.rows[0].capacity;
 
             const countRes = await client.query(
@@ -128,6 +124,7 @@ class QueueService {
         let client = providedClient || await db.connect();
         try {
             if (!providedClient) await client.query('BEGIN');
+            
             // We lock the job to ensure concurrent promotions don't race
             const jobResult = await client.query(
                 'SELECT capacity FROM Jobs WHERE id = $1 FOR UPDATE',
@@ -135,31 +132,35 @@ class QueueService {
             );
 
             if (jobResult.rows.length === 0) {
-                throw createHttpError('Job not found', 404);
+                throw new NotFoundError('Job not found');
             }
+
+            const capacity = parseInt(jobResult.rows[0].capacity, 10);
 
             const activeCountResult = await client.query(
                 'SELECT COUNT(*) FROM Applicants WHERE job_id = $1 AND status IN (\'ACTIVE\', \'PENDING_ACK\')',
                 [jobId]
             );
 
-            if (parseInt(activeCountResult.rows[0].count, 10) >= parseInt(jobResult.rows[0].capacity, 10)) {
+            const currentCount = parseInt(activeCountResult.rows[0].count, 10);
+            const slotsAvailable = capacity - currentCount;
+
+            if (slotsAvailable <= 0) {
                 if (!providedClient) await client.query('COMMIT');
-                return null;
+                return;
             }
 
-            // Promote based on deterministic sequence ordering.
+            // Promote up to slotsAvailable based on deterministic sequence ordering.
             // SKIP LOCKED allows horizontally scaled workers to fetch discrete chunks of candidates.
-            const waitlistedApplicant = await client.query(
-                'SELECT id FROM Applicants WHERE job_id = $1 AND status = \'WAITLISTED\' ORDER BY priority_score ASC LIMIT 1 FOR UPDATE SKIP LOCKED',
-                [jobId]
+            const waitlistedApplicants = await client.query(
+                'SELECT id FROM Applicants WHERE job_id = $1 AND status = \'WAITLISTED\' ORDER BY priority_score ASC LIMIT $2 FOR UPDATE SKIP LOCKED',
+                [jobId, slotsAvailable]
             );
 
-            if (waitlistedApplicant.rows.length > 0) {
-                const applicantId = waitlistedApplicant.rows[0].id;
+            for (const row of waitlistedApplicants.rows) {
                 await this.transitionApplicant(
                     client,
-                    applicantId,
+                    row.id,
                     'WAITLISTED',
                     'PENDING_ACK',
                     'SYSTEM_PROMOTION'
@@ -183,7 +184,7 @@ class QueueService {
             this.assertApplicantAccess(applicant, actor);
 
             if (applicant.status !== 'PENDING_ACK') {
-                throw createHttpError('Not in acknowledgment window', 409);
+                throw new ConflictError('Not in acknowledgment window');
             }
 
             await this.transitionApplicant(client, applicantId, 'PENDING_ACK', 'ACTIVE', 'USER_ACK');
