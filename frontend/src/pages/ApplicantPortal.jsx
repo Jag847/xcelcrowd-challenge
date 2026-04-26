@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApplicantPortfolio, useApplicantStatus, useJobs, useMutateAcknowledge, useMutateApply, useMutateExit } from '../hooks/useNextInLine';
+import { useCountdown } from '../hooks/useCountdown';
 import { CheckCircle, Search, Briefcase, Zap, AlertTriangle } from 'lucide-react';
 
 const Stepper = ({ status }) => {
@@ -44,35 +45,7 @@ const Stepper = ({ status }) => {
 };
 
 const DecayClock = ({ transitionAt, onExpire }) => {
-    const [timeLeft, setTimeLeft] = useState('');
-    const [isCritical, setIsCritical] = useState(false);
-
-    useEffect(() => {
-        const calculateRemaining = () => {
-             // 24 hours in ms
-             const expiry = new Date(transitionAt).getTime() + (24 * 60 * 60 * 1000);
-             const now = new Date().getTime();
-             const diff = expiry - now;
-
-             if (diff <= 0) {
-                 setTimeLeft('00:00:00');
-                 setIsCritical(true);
-                 if (onExpire) onExpire();
-                 return;
-             }
-
-             setIsCritical(diff < 60000); // Pulse Red < 60s
-             
-             const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-             const minutes = Math.floor((diff / 1000 / 60) % 60);
-             const seconds = Math.floor((diff / 1000) % 60);
-             setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-        };
-
-        calculateRemaining();
-        const interval = setInterval(calculateRemaining, 1000);
-        return () => clearInterval(interval);
-    }, [transitionAt, onExpire]);
+    const { timeLeft, isCritical } = useCountdown(transitionAt, onExpire);
 
     return (
         <div className={`font-mono text-4xl font-bold tracking-tighter transition-colors duration-500 ${isCritical ? 'text-red-600 animate-pulse' : 'text-indigo-600'}`}>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { CompanyCommandCenter } from './pages/CompanyCommandCenter';
 import { ApplicantPortal } from './pages/ApplicantPortal';
 import api from './api';

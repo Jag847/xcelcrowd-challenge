@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../api';
+import { useCountdown } from '../hooks/useCountdown';
 import { Search, CheckCircle, ArrowRight, Briefcase, Plus, Activity, Trophy, Star } from 'lucide-react';
 
 export default function ApplicantStatus() {
@@ -7,9 +8,10 @@ export default function ApplicantStatus() {
     const [status, setStatus] = useState(null);
     const [error, setError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
-    const [timeLeft, setTimeLeft] = useState('');
-    const [isCritical, setIsCritical] = useState(false);
     const [appliedJobIds, setAppliedJobIds] = useState(new Set());
+    
+    // Shared countdown
+    const { timeLeft, isCritical } = useCountdown(status?.status === 'PENDING_ACK' ? status.last_transition_at : null);
 
     // E2E Flow Forms State
     const [jobs, setJobs] = useState([]);
@@ -92,31 +94,7 @@ export default function ApplicantStatus() {
         }
     };
 
-    // Live Decay Countdown Timer 
-    useEffect(() => {
-        let timer;
-        if (status?.status === 'PENDING_ACK' && status.last_transition_at) {
-            timer = setInterval(() => {
-                const now = new Date().getTime();
-                const totalTime = 24 * 60 * 60 * 1000;
-                const transitionTime = new Date(status.last_transition_at).getTime();
-                const difference = (transitionTime + totalTime) - now;
 
-                if (difference <= 0) {
-                    setTimeLeft("EXPIRED");
-                    setIsCritical(true);
-                    clearInterval(timer);
-                } else {
-                    const h = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    const m = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-                    const s = Math.floor((difference % (1000 * 60)) / 1000);
-                    setTimeLeft(`${h}h ${m}m ${s}s`);
-                    setIsCritical(h === 0);
-                }
-            }, 1000);
-        }
-        return () => clearInterval(timer);
-    }, [status]);
 
     return (
         <div className="max-w-6xl mx-auto space-y-8">

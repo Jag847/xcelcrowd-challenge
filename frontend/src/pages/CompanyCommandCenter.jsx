@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Search, LogOut, CheckCircle, Clock, Plus, Trash2 } from 'lucide-react';
 import { useJobs, usePipeline, useAuditLogs, useMutateJob, useMutateExit } from '../hooks/useNextInLine';
