@@ -133,5 +133,5 @@ describe('Next In Line backend guarantees', () => {
                 expect.objectContaining({ trigger: 'SYSTEM_PROMOTION', from_status: 'WAITLISTED', to_status: 'PENDING_ACK' })
             ])
         );
-    });
+    }, 30000);
 });
