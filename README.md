@@ -561,18 +561,7 @@ If I were onboarding another engineer, I would point them to these files first:
 
 ## 8. API Documentation
 
-| Endpoint | Method | Auth | Request Body | Expected Response |
-| --- | --- | --- | --- | --- |
-| `/api/auth/login` | `POST` | None | `{ "role": "APPLICANT", "email": "jane@example.com" }` or `{ "role": "COMPANY_ADMIN" }` | `{ "token": "jwt", "role": "APPLICANT" }` |
-| `/api/jobs` | `POST` | `COMPANY_ADMIN` | `{ "title": "Backend Engineer", "capacity": 2 }` | Newly created job row |
-| `/api/jobs` | `GET` | `COMPANY_ADMIN` or `APPLICANT` | None | Array of jobs with `activeCount` and `waitlistCount` |
-| `/api/jobs/:id/applicants` | `GET` | `COMPANY_ADMIN` | None | Ordered non-exited pipeline snapshot for the job |
-| `/api/jobs/:id/apply` | `POST` | `APPLICANT` or `COMPANY_ADMIN` | Applicant: `{}`. Admin-assisted apply: `{ "email": "candidate@example.com" }` | `{ "id": "uuid", "status": "PENDING_ACK" }`, `{ "id": "uuid", "status": "WAITLISTED" }`, or duplicate application payload |
-| `/api/applicants/me` | `GET` | `APPLICANT` | None | Array of the authenticated applicant's applications |
-| `/api/applicants/:id/status` | `GET` | `APPLICANT` or `COMPANY_ADMIN` | None | Applicant record plus `position` when `WAITLISTED` |
-| `/api/applicants/:id/acknowledge` | `POST` | `APPLICANT` | None | `{ "message": "Status updated to Active" }` |
-| `/api/applicants/:id/exit` | `POST` | `APPLICANT` | None | `{ "message": "Successfully withdrawn from pipeline. Cascading promotion triggered." }` |
-| `/api/audit-logs?since=<id>` | `GET` | `COMPANY_ADMIN` | None | Delta stream of `StateLogs` joined with applicant email |
+The system exposes a RESTful API for both applicants and company administrators. For full request/response schemas, please refer to the dedicated [API.md](./API.md) file.
 
 ### Example: Apply to a job
 

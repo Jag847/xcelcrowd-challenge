@@ -5,7 +5,7 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
       POSTGRES_DB: nextinline
     volumes:
       - ./backend/models/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
@@ -29,7 +29,7 @@ services:
       - ./backend:/app
       - /app/node_modules
     environment:
-      DATABASE_URL: postgresql://postgres:password@db:5432/nextinline
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@db:5432/nextinline
       PORT: 5000
       JWT_SECRET: super_secure_key_123_competition
     depends_on:
